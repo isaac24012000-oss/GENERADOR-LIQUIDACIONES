@@ -1,0 +1,41 @@
+# Ignorar archivos grandes de datos
+DetalleEmpresas_*.xlsx
+formato.xlsx
+
+# Archivos de salida
+LIQUIDACIONES_GENERADAS/
+*.pdf
+*.xlsx
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.env
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Cache
+.streamlit/
+.cache/
+
+# Logs
+*.log
+
+# Otros
+*.tmp
+.temp/
