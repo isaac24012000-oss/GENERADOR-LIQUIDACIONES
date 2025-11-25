@@ -43,8 +43,8 @@ class GeneradorPDF:
         # Crear PDF en memoria con orientación horizontal (landscape)
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=landscape(A4),
-                               rightMargin=0*inch, leftMargin=0*inch,
-                               topMargin=0*inch, bottomMargin=0*inch)
+                               rightMargin=0.1*inch, leftMargin=0.1*inch,
+                               topMargin=0.5*inch, bottomMargin=0.1*inch)
         
         # Contenedor de elementos
         elements = []
@@ -149,13 +149,12 @@ class GeneradorPDF:
         
         # Preparar datos de la tabla
         table_data = [
-            ['CUSSP', 'Período', 'Fondo', 'Mora', 'Total Fondo', 'Total Admin.', 'Total'],
+            ['CUSSP', 'Afiliado', 'Período', 'Fondo', 'Mora', 'Total Admin.', 'Total Fondo'],
         ]
         
         total_fondo = 0
         total_mora = 0
         total_administradora = 0
-        total_general = 0
         
         for idx, row in datos_ruc.iterrows():
             # Usar DEUDA_CON_MORA si está disponible, sino usar TOTA_FONDO
@@ -167,7 +166,6 @@ class GeneradorPDF:
             admin = row['COMISION_NOMINAL']
             interes_admin = row['SEGURO_NOMINAL'] + row['AFP_NOMINAL']
             total_admin_row = admin + interes_admin
-            total_row = deuda_con_mora + total_admin_row
             
             # Saltar si admin es 0
             if total_admin_row == 0:
@@ -176,36 +174,40 @@ class GeneradorPDF:
             # Usar CUSSP completo
             cussp_str = str(row['CUSSP'])
             
+            # Obtener AFILIADO (si existe) - mostrar nombre completo
+            afiliado_str = str(row.get('AFILIADO', '')) if 'AFILIADO' in row else ''
+            
             # Extraer solo YYYYMM del período
             periodo_str = str(row['OPERACION'])[-6:] if len(str(row['OPERACION'])) >= 6 else str(row['OPERACION'])
             
             table_data.append([
                 cussp_str,
+                afiliado_str,
                 periodo_str,
                 f"S/. {fondo:.2f}",
                 f"S/. {mora:.2f}",
-                f"S/. {deuda_con_mora:.2f}",
                 f"S/. {total_admin_row:.2f}",
-                f"S/. {total_row:.2f}",
+                f"S/. {deuda_con_mora:.2f}",
             ])
             
             total_fondo += deuda_con_mora
             total_mora += mora
             total_administradora += total_admin_row
-            total_general += total_row
         
-        # Fila de totales
+        # Agregar fila de TOTAL
         table_data.append([
-            '', '', 'TOTAL:', 
+            'TOTAL',
+            '',
+            '',
+            '',
             f"S/. {total_mora:.2f}",
-            f"S/. {total_fondo:.2f}",
             f"S/. {total_administradora:.2f}",
-            f"S/. {total_general:.2f}",
+            f"S/. {total_fondo:.2f}",
         ])
         
-        # Crear tabla con columnas más anchas para landscape - sin márgenes
-        table = Table(table_data, colWidths=[1.6*inch, 1.0*inch, 1.0*inch, 1.0*inch, 
-                                             1.2*inch, 1.2*inch, 1.2*inch])
+        # Crear tabla con columnas más anchas para landscape - maximizar espacio
+        table = Table(table_data, colWidths=[1.2*inch, 2.6*inch, 1.0*inch, 1.05*inch, 1.05*inch, 
+                                             1.35*inch, 1.35*inch])
         
         table.setStyle(TableStyle([
             # Encabezado
@@ -218,10 +220,11 @@ class GeneradorPDF:
             ('TOPPADDING', (0, 0), (-1, 0), 12),
             
             # Datos - sin grilla, más espacioso
-            ('FONTSIZE', (0, 1), (-1, -1), 10),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
             ('ALIGN', (0, 1), (-1, -1), 'RIGHT'),
             ('ALIGN', (0, 1), (0, -1), 'LEFT'),
-            ('ALIGN', (1, 1), (1, -1), 'CENTER'),
+            ('ALIGN', (1, 1), (1, -1), 'LEFT'),
+            ('ALIGN', (2, 1), (2, -1), 'CENTER'),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ('LINEBELOW', (0, 0), (-1, 0), 1, colors.HexColor('#4472C4')),
             ('ROWPADDING', (0, 1), (-1, -1), 10),
@@ -281,20 +284,6 @@ class GeneradorPDF:
         
         elements.append(resumen_table)
         elements.append(Spacer(1, 0.3*inch))
-        
-        # PIE DE PÁGINA
-        pie_style = ParagraphStyle(
-            'PieCustom',
-            parent=styles['Normal'],
-            fontSize=8,
-            textColor=colors.grey,
-            alignment=TA_CENTER
-        )
-        
-        elements.append(Paragraph(
-            f"Documento generado el {self.fecha_actual}",
-            pie_style
-        ))
         
         # Construir PDF
         doc.build(elements)
