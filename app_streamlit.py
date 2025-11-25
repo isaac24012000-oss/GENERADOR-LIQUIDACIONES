@@ -307,27 +307,58 @@ if ruc_encontrado and campana_seleccionada:
             
             # Preparar datos para mostrar
             datos_tabla = []
+            total_fondo_general = 0
+            total_mora_general = 0
+            total_admin_general = 0
+            
             for idx, row in datos_ruc.iterrows():
                 fondo = row['FONDO_NOMINAL']
                 admin = row['COMISION_NOMINAL']
                 mora = row.get('MORA', 0)
                 interes_admin = row['SEGURO_NOMINAL'] + row['AFP_NOMINAL']
                 total_admin_row = admin + interes_admin
-                total_row = row['DEUDA_CON_MORA'] + total_admin_row
+                deuda_con_mora = row['DEUDA_CON_MORA']
+                
+                # Obtener AFILIADO
+                afiliado = str(row.get('AFILIADO', '')) if 'AFILIADO' in row else ''
+                
+                # Extraer últimos 6 dígitos del período
+                periodo_completo = str(row['OPERACION'])
+                periodo = periodo_completo[-6:] if len(periodo_completo) >= 6 else periodo_completo
                 
                 datos_tabla.append({
                     'CUSSP': row['CUSSP'],
-                    'Período': row['OPERACION'],
+                    'Afiliado': afiliado,
+                    'Período': periodo,
                     'Fondo': f"{fondo:.2f}",
                     'Mora': f"{mora:.2f}",
-                    'Admin': f"{admin:.2f}",
-                    'Total Fondo': f"{row['DEUDA_CON_MORA']:.2f}",
+                    'Total Fondo': f"{deuda_con_mora:.2f}",
                     'Total Admin': f"{total_admin_row:.2f}",
-                    'Total': f"{total_row:.2f}",
                 })
+                
+                total_fondo_general += deuda_con_mora
+                total_mora_general += mora
+                total_admin_general += total_admin_row
             
-            df_mostrar = pd.DataFrame(datos_tabla)
-            st.dataframe(df_mostrar, use_container_width=True)
+            df_datos = pd.DataFrame(datos_tabla)
+            
+            # Mostrar tabla de datos
+            st.dataframe(df_datos, use_container_width=True, hide_index=True)
+            
+            # Mostrar fila de totales como texto grande y destacado
+            col1, col2, col3, col4, col5, col6 = st.columns(6)
+            with col1:
+                st.metric("", "TOTAL", delta=None)
+            with col2:
+                st.metric("", "", delta=None)
+            with col3:
+                st.metric("", "", delta=None)
+            with col4:
+                st.metric("Mora Total", f"S/. {total_mora_general:.2f}")
+            with col5:
+                st.metric("Total Fondo", f"S/. {total_fondo_general:.2f}")
+            with col6:
+                st.metric("Total Admin", f"S/. {total_admin_general:.2f}")
     
     except Exception as e:
         st.error(f"❌ Error: {e}")
